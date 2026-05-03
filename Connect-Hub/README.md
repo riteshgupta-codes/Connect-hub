@@ -1,4 +1,5 @@
-# Connect-Hub
+# Meetnow
+
 
 A professional platform designed for seamless video meetings and real-time collaboration.
 
