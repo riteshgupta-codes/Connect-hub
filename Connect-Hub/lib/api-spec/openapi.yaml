@@ -1,0 +1,908 @@
+openapi: 3.1.0
+info:
+  title: Api
+  version: 0.1.0
+  description: MeetNow API specification
+servers:
+  - url: /api
+    description: Base API path
+tags:
+  - name: health
+    description: Health operations
+  - name: auth
+    description: Authentication
+  - name: meetings
+    description: Meeting management
+  - name: schedules
+    description: Schedule management
+  - name: messages
+    description: Chat messages
+  - name: analytics
+    description: Analytics
+paths:
+  /healthz:
+    get:
+      operationId: healthCheck
+      tags: [health]
+      summary: Health check
+      responses:
+        "200":
+          description: Healthy
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/HealthStatus"
+
+  # AUTH
+  /v1/auth/register:
+    post:
+      operationId: registerUser
+      tags: [auth]
+      summary: Register a new user
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/RegisterBody"
+      responses:
+        "201":
+          description: Registered
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AuthResponse"
+        "400":
+          description: Validation error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "409":
+          description: Email taken
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /v1/auth/login:
+    post:
+      operationId: loginUser
+      tags: [auth]
+      summary: Login
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/LoginBody"
+      responses:
+        "200":
+          description: Logged in
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AuthResponse"
+        "401":
+          description: Invalid credentials
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /v1/auth/logout:
+    post:
+      operationId: logoutUser
+      tags: [auth]
+      summary: Logout
+      responses:
+        "200":
+          description: Logged out
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SuccessResponse"
+
+  /v1/auth/me:
+    get:
+      operationId: getMe
+      tags: [auth]
+      summary: Get current user
+      responses:
+        "200":
+          description: Current user
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/User"
+        "401":
+          description: Not authenticated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /v1/auth/profile:
+    patch:
+      operationId: updateProfile
+      tags: [auth]
+      summary: Update user profile
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateProfileBody"
+      responses:
+        "200":
+          description: Updated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/User"
+
+  /v1/auth/change-password:
+    post:
+      operationId: changePassword
+      tags: [auth]
+      summary: Change password
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ChangePasswordBody"
+      responses:
+        "200":
+          description: Password changed
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SuccessResponse"
+
+  # MEETINGS
+  /v1/meetings:
+    post:
+      operationId: createMeeting
+      tags: [meetings]
+      summary: Create a new meeting
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateMeetingBody"
+      responses:
+        "201":
+          description: Meeting created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Meeting"
+
+  /v1/meetings/history:
+    get:
+      operationId: getMeetingHistory
+      tags: [meetings]
+      summary: Get meeting history
+      parameters:
+        - name: page
+          in: query
+          schema:
+            type: integer
+            default: 1
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            default: 10
+        - name: status
+          in: query
+          schema:
+            type: string
+            enum: [active, ended, scheduled]
+        - name: filter
+          in: query
+          schema:
+            type: string
+            enum: [all, hosted, joined]
+      responses:
+        "200":
+          description: Meeting history
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MeetingListResponse"
+
+  /v1/meetings/{roomId}:
+    get:
+      operationId: getMeeting
+      tags: [meetings]
+      summary: Get meeting by roomId
+      parameters:
+        - name: roomId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Meeting
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Meeting"
+        "404":
+          description: Not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+    patch:
+      operationId: updateMeeting
+      tags: [meetings]
+      summary: Update meeting
+      parameters:
+        - name: roomId
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateMeetingBody"
+      responses:
+        "200":
+          description: Updated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Meeting"
+    delete:
+      operationId: deleteMeeting
+      tags: [meetings]
+      summary: Delete meeting
+      parameters:
+        - name: roomId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "204":
+          description: Deleted
+
+  /v1/meetings/{roomId}/verify-passcode:
+    post:
+      operationId: verifyMeetingPasscode
+      tags: [meetings]
+      summary: Verify meeting passcode
+      parameters:
+        - name: roomId
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/VerifyPasscodeBody"
+      responses:
+        "200":
+          description: Verified
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SuccessResponse"
+        "401":
+          description: Wrong passcode
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /v1/meetings/{roomId}/messages:
+    get:
+      operationId: getMeetingMessages
+      tags: [messages]
+      summary: Get meeting chat messages
+      parameters:
+        - name: roomId
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: page
+          in: query
+          schema:
+            type: integer
+            default: 1
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            default: 50
+      responses:
+        "200":
+          description: Messages
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Message"
+
+  # SCHEDULES
+  /v1/schedules:
+    post:
+      operationId: createSchedule
+      tags: [schedules]
+      summary: Schedule a meeting
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateScheduleBody"
+      responses:
+        "201":
+          description: Scheduled
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Schedule"
+    get:
+      operationId: getSchedules
+      tags: [schedules]
+      summary: Get schedules
+      parameters:
+        - name: status
+          in: query
+          schema:
+            type: string
+            enum: [upcoming, started, cancelled, all]
+        - name: page
+          in: query
+          schema:
+            type: integer
+            default: 1
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            default: 10
+      responses:
+        "200":
+          description: Schedules
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Schedule"
+
+  /v1/schedules/{id}:
+    get:
+      operationId: getSchedule
+      tags: [schedules]
+      summary: Get schedule by id
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Schedule
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Schedule"
+        "404":
+          description: Not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+    patch:
+      operationId: updateSchedule
+      tags: [schedules]
+      summary: Update schedule
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateScheduleBody"
+      responses:
+        "200":
+          description: Updated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Schedule"
+    delete:
+      operationId: deleteSchedule
+      tags: [schedules]
+      summary: Cancel/delete a schedule
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "204":
+          description: Deleted
+
+  # ANALYTICS
+  /v1/analytics/user:
+    get:
+      operationId: getUserAnalytics
+      tags: [analytics]
+      summary: Get user analytics
+      parameters:
+        - name: from
+          in: query
+          schema:
+            type: string
+        - name: to
+          in: query
+          schema:
+            type: string
+        - name: range
+          in: query
+          schema:
+            type: string
+            enum: [7d, 30d, 90d, 1y]
+      responses:
+        "200":
+          description: Analytics
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/UserAnalytics"
+
+  /v1/analytics/overview:
+    get:
+      operationId: getAnalyticsOverview
+      tags: [analytics]
+      summary: Get quick analytics overview for dashboard
+      responses:
+        "200":
+          description: Overview
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AnalyticsOverview"
+
+components:
+  schemas:
+    HealthStatus:
+      type: object
+      properties:
+        status:
+          type: string
+      required:
+        - status
+
+    ErrorResponse:
+      type: object
+      properties:
+        error:
+          type: string
+      required:
+        - error
+
+    SuccessResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+        message:
+          type: string
+      required:
+        - success
+
+    User:
+      type: object
+      properties:
+        id:
+          type: integer
+        name:
+          type: string
+        email:
+          type: string
+        displayName:
+          type: ["string", "null"]
+        avatar:
+          type: ["string", "null"]
+        plan:
+          type: string
+          enum: [free, pro, business]
+        createdAt:
+          type: string
+      required:
+        - id
+        - name
+        - email
+        - plan
+        - createdAt
+
+    AuthResponse:
+      type: object
+      properties:
+        user:
+          $ref: "#/components/schemas/User"
+        token:
+          type: string
+      required:
+        - user
+        - token
+
+    RegisterBody:
+      type: object
+      properties:
+        name:
+          type: string
+          minLength: 2
+        email:
+          type: string
+          format: email
+        password:
+          type: string
+          minLength: 8
+      required:
+        - name
+        - email
+        - password
+
+    LoginBody:
+      type: object
+      properties:
+        email:
+          type: string
+          format: email
+        password:
+          type: string
+      required:
+        - email
+        - password
+
+    UpdateProfileBody:
+      type: object
+      properties:
+        name:
+          type: string
+        displayName:
+          type: string
+        avatar:
+          type: string
+        preferences:
+          type: object
+          properties:
+            defaultMicOn:
+              type: boolean
+            defaultCameraOn:
+              type: boolean
+            noiseCancel:
+              type: boolean
+            theme:
+              type: string
+              enum: [light, dark, system]
+
+    ChangePasswordBody:
+      type: object
+      properties:
+        currentPassword:
+          type: string
+        newPassword:
+          type: string
+          minLength: 8
+      required:
+        - currentPassword
+        - newPassword
+
+    MeetingSettings:
+      type: object
+      properties:
+        waitingRoomEnabled:
+          type: boolean
+        allowParticipantScreenShare:
+          type: boolean
+        allowParticipantChat:
+          type: boolean
+        muteOnEntry:
+          type: boolean
+        autoRecord:
+          type: boolean
+        passcodeRequired:
+          type: boolean
+
+    Meeting:
+      type: object
+      properties:
+        id:
+          type: integer
+        roomId:
+          type: string
+        title:
+          type: string
+        hostId:
+          type: integer
+        hostName:
+          type: string
+        status:
+          type: string
+          enum: [active, ended, scheduled]
+        isLocked:
+          type: boolean
+        settings:
+          $ref: "#/components/schemas/MeetingSettings"
+        participantCount:
+          type: integer
+        duration:
+          type: ["integer", "null"]
+        startedAt:
+          type: ["string", "null"]
+        endedAt:
+          type: ["string", "null"]
+        createdAt:
+          type: string
+      required:
+        - id
+        - roomId
+        - title
+        - hostId
+        - hostName
+        - status
+        - isLocked
+        - settings
+        - participantCount
+        - createdAt
+
+    MeetingListResponse:
+      type: object
+      properties:
+        meetings:
+          type: array
+          items:
+            $ref: "#/components/schemas/Meeting"
+        total:
+          type: integer
+        page:
+          type: integer
+        limit:
+          type: integer
+      required:
+        - meetings
+        - total
+        - page
+        - limit
+
+    CreateMeetingBody:
+      type: object
+      properties:
+        title:
+          type: string
+        settings:
+          $ref: "#/components/schemas/MeetingSettings"
+        passcode:
+          type: string
+      required: []
+
+    UpdateMeetingBody:
+      type: object
+      properties:
+        title:
+          type: string
+        status:
+          type: string
+          enum: [active, ended, scheduled]
+        isLocked:
+          type: boolean
+        settings:
+          $ref: "#/components/schemas/MeetingSettings"
+
+    VerifyPasscodeBody:
+      type: object
+      properties:
+        passcode:
+          type: string
+      required:
+        - passcode
+
+    Message:
+      type: object
+      properties:
+        id:
+          type: integer
+        roomId:
+          type: string
+        senderId:
+          type: ["integer", "null"]
+        senderName:
+          type: string
+        message:
+          type: string
+        type:
+          type: string
+          enum: [text, system, reaction]
+        timestamp:
+          type: string
+      required:
+        - id
+        - roomId
+        - senderName
+        - message
+        - type
+        - timestamp
+
+    Schedule:
+      type: object
+      properties:
+        id:
+          type: integer
+        hostId:
+          type: integer
+        title:
+          type: string
+        description:
+          type: ["string", "null"]
+        scheduledFor:
+          type: string
+        durationMinutes:
+          type: integer
+        invitees:
+          type: array
+          items:
+            type: string
+        passcode:
+          type: ["string", "null"]
+        settings:
+          $ref: "#/components/schemas/MeetingSettings"
+        status:
+          type: string
+          enum: [upcoming, started, cancelled]
+        meetingRoomId:
+          type: ["string", "null"]
+        createdAt:
+          type: string
+      required:
+        - id
+        - hostId
+        - title
+        - scheduledFor
+        - durationMinutes
+        - invitees
+        - settings
+        - status
+        - createdAt
+
+    CreateScheduleBody:
+      type: object
+      properties:
+        title:
+          type: string
+        description:
+          type: string
+        scheduledFor:
+          type: string
+        durationMinutes:
+          type: integer
+          enum: [15, 30, 45, 60, 90, 120]
+        invitees:
+          type: array
+          items:
+            type: string
+        passcode:
+          type: string
+        settings:
+          $ref: "#/components/schemas/MeetingSettings"
+      required:
+        - title
+        - scheduledFor
+        - durationMinutes
+
+    UpdateScheduleBody:
+      type: object
+      properties:
+        title:
+          type: string
+        description:
+          type: string
+        scheduledFor:
+          type: string
+        durationMinutes:
+          type: integer
+        invitees:
+          type: array
+          items:
+            type: string
+        status:
+          type: string
+          enum: [upcoming, started, cancelled]
+
+    DailyMeetingCount:
+      type: object
+      properties:
+        date:
+          type: string
+        count:
+          type: integer
+      required:
+        - date
+        - count
+
+    TopContact:
+      type: object
+      properties:
+        name:
+          type: string
+        meetingCount:
+          type: integer
+      required:
+        - name
+        - meetingCount
+
+    UserAnalytics:
+      type: object
+      properties:
+        totalMeetings:
+          type: integer
+        totalHoursMinutes:
+          type: string
+        totalMessages:
+          type: integer
+        uniquePeopleMet:
+          type: integer
+        meetingsHosted:
+          type: integer
+        meetingsJoined:
+          type: integer
+        dailyCounts:
+          type: array
+          items:
+            $ref: "#/components/schemas/DailyMeetingCount"
+        topContacts:
+          type: array
+          items:
+            $ref: "#/components/schemas/TopContact"
+      required:
+        - totalMeetings
+        - totalHoursMinutes
+        - totalMessages
+        - uniquePeopleMet
+        - meetingsHosted
+        - meetingsJoined
+        - dailyCounts
+        - topContacts
+
+    AnalyticsOverview:
+      type: object
+      properties:
+        meetingsThisMonth:
+          type: integer
+        totalHours:
+          type: string
+        peopleMet:
+          type: integer
+        messagesSent:
+          type: integer
+      required:
+        - meetingsThisMonth
+        - totalHours
+        - peopleMet
+        - messagesSent
